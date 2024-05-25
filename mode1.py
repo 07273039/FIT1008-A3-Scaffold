@@ -1,6 +1,6 @@
 from landsites import Land
 from data_structures.bst import *
-from typing import Tuple
+from data_structures.linked_stack import LinkedStack
 
 class Mode1Navigator:
     """
@@ -24,7 +24,7 @@ class Mode1Navigator:
         self.adventurers = adventurers
         self.sites = BinarySearchTree()
         for site in sites:
-            self.sites[site.get_gold() / site.get_guardians() if site.guardians != 0 else float('inf')] = site # Insert with comparison key
+            self.sites[-(site.get_gold() / site.get_guardians()) if site.guardians != 0 else float('inf')] = site # Insert with comparison key
 
     def select_sites(self) -> list[tuple[Land, int]]:
         """
@@ -41,7 +41,8 @@ class Mode1Navigator:
         """
         remaining_adventurers = self.adventurers
         selected_sites = []
-        for node in iter(self.sites):
+
+        for node in BSTInOrderIterator(self.sites.root):
             site = node.item
             if remaining_adventurers == 0:
                 break
@@ -71,8 +72,8 @@ class Mode1Navigator:
         for adventurers in adventure_numbers:
             total_reward = 0.0
             remaining_adventurers = adventurers
-
-            for node in iter(self.sites):
+            
+            for node in BSTInOrderIterator(self.sites.root):
                 site = node.item
                 if remaining_adventurers == 0:
                     break
@@ -99,16 +100,9 @@ class Mode1Navigator:
             Best Case: O(1) - Direct assignment of new values.
             Worst Case: O(log(N)) - The same, as the operation involves only a few direct assignments.
         """
-        for key, value in self.sites:
-            if value.name == land.name:
-                print(key, value)
-                
-        key = land.get_gold() / land.get_guardians()
-        print(key)
-
+        land = self.sites[-(land.get_gold() / land.get_guardians())] 
         land.set_gold(new_reward)
         land.set_guardians(new_guardians)
-        self.sites[key] = land
         
 if __name__ == "__main__":
     a = Land("A", 400, 100)

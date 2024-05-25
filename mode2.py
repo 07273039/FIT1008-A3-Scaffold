@@ -1,58 +1,126 @@
 from landsites import Land
-import heapq
+from typing import List, Tuple, Union
+from data_structures.heap import MaxHeap
+from data_structures.bst import *
 
 class Mode2Navigator:
     """
-    Student-TODO: short paragraph as per
-    https://edstem.org/au/courses/14293/lessons/46720/slides/318306
+    Navigator for simulating a fair fight among multiple adventurer teams.
     """
 
-from dataclasses import dataclass
-import heapq
-
-@dataclass
-class Land:
-    name: str
-    gold: int
-    guardians: int
-
-class Mode2Navigator:
     def __init__(self, n_teams: int) -> None:
+        """
+        Initialize the navigator with the number of teams.
+        :param n_teams: Number of adventurer teams.
+        """
         self.n_teams = n_teams
         self.sites = []
 
-    def add_sites(self, sites: list[Land]) -> None:
+    def add_sites(self, sites: List[Land]) -> None:
+        """
+        Add land sites to the navigator.
+
+        Parameters:
+            sites (list[Land]): List of land sites, where each site is an instance of Land.
+
+        Complexity:
+            Best Case: O(N) - N is the number of elements in the sites list.
+            Worst Case: O(N) - The same as the best case.
+        """
         self.sites.extend(sites)
 
-    def compute_score(self, land: Land, adventurer_size: int) -> tuple[float, int, int]:
-        if land.guardians >= adventurer_size:
-            return 0, adventurer_size, 0
-        
-        remaining_adventurers = adventurer_size - land.guardians
-        gold_gained = land.gold
+    def simulate_day(self, adventurer_size: int) -> List[Tuple[Union[Land, None], int]]:
+        """
+        Simulate a day of the game.
+
+        Parameters:
+            adventurer_size: an integer representing the number of adventurers for each team.
+
+        Return:
+            Returns a list of tuples where each tuple represents the choices made by each team. Each tuple contains:
+                - An instance of Land or None if no site was chosen.
+                - An integer representing the number of adventurers sent to the chosen site.
+
+        Complexity:
+            Best Case: O(n * log n + t)
+            Worst Case: O(n * log n + t)
+
+            where:
+                - n is the number of land sites (length of self.sites)
+                - t is the number of teams (self.n_teams)
+        """
+        choices = []
+
+        heap = self.construct_score_data_structure(adventurer_size)
+
+        for team in range(self.n_teams):
+            if len(heap) == 0:
+                choices.append((None, 0))
+                continue
+
+            best_score, best_site = heap.get_max()
+            score, remaining_adventurers, gold_gained = self.compute_score(best_site, adventurer_size)
+            if score == best_score:
+                sent_adventurers = adventurer_size - remaining_adventurers
+                choices.append((best_site, sent_adventurers))
+                best_site.gold -= gold_gained
+                best_site.guardians -= sent_adventurers
+                
+                new_score, _, _ = self.compute_score(best_site, adventurer_size)
+                heap.add((new_score, best_site))
+
+            else:
+                choices.append((None, 0))
+
+        return choices
+
+    
+    def compute_score(self, land: Land, adventurers: int) -> Tuple[float, int, float]:
+        """
+        Compute the score of a land site for a given number of adventurers.
+
+        Parameters:
+            land: an instance of Land.
+            adventurers: an integer representing the number of adventurers coming to the land.
+
+        Return:
+            returns a tuple containing the score, remaining_adventurers, and gold_gained.
+
+        Complexity:
+            Best Case: O(1)
+            Worst Case: O(1)
+        """
+        if land.guardians == 0:
+            return 2.5 * adventurers, adventurers, 0
+
+        ci = min(adventurers, land.guardians)
+        gold_gained = min(ci * (land.gold / land.guardians), land.gold)
+        remaining_adventurers = adventurers - ci
         score = 2.5 * remaining_adventurers + gold_gained
         return score, remaining_adventurers, gold_gained
 
-    def construct_score_data_structure(self, adventurer_size: int) -> list:
-        score_heap = []
-        for land in self.sites:
-            score, remaining_adventurers, gold_gained = self.compute_score(land, adventurer_size)
-            heapq.heappush(score_heap, (-score, land.name, land, remaining_adventurers, gold_gained))
-        return score_heap
+    def construct_score_data_structure(self, adventurers: int):
+        """
+        Constructs a max-heap data structure containing the scores of land sites for a given number of adventurers.
 
-    def simulate_day(self, adventurer_size: int) -> list[tuple[Land|None, int]]:
-        decisions = []
-        score_heap = self.construct_score_data_structure(adventurer_size)
+        Parameters:
+            adventurers: an integer representing the number of adventurers coming to explore the sites.
 
-        for _ in range(self.n_teams):
-            if score_heap:
-                _, _, land, remaining_adventurers, gold_gained = heapq.heappop(score_heap)
-                decisions.append((land, adventurer_size))
-                # Update the land site
-                land.gold -= gold_gained
-                land.guardians = max(0, land.guardians - adventurer_size)
-            else:
-                decisions.append((None, 0))
+        Return:
+            Returns a max-heap containing tuples where each tuple consists of the score and the corresponding site.
 
-        return decisions
+        Complexity:
+            Best Case: O(n * log n)
+            Worst Case: O(n * log n)
 
+            where:
+                - n is the number of land sites (length of self.sites)
+        """
+        heap = MaxHeap(len(self.sites))
+
+        # Initialize the max-heap with land site scores
+        for site in self.sites:
+            score, _, _ = self.compute_score(site, adventurers)
+            heap.add((score, site))
+
+        return heap
