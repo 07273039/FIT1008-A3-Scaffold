@@ -64,9 +64,3 @@ class Land:
 
     def set_guardians(self, new_guardians: int) -> None:
         self.guardians = new_guardians
-
-    def __lt__(self, other):
-        return self.get_name() < other.get_name()
-    
-    def __le__(self, other):
-        return self.get_name() < other.get_name()
